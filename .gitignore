@@ -1,0 +1,9 @@
+# Dependências do Node (Ignora em qualquer subpasta do monorepo)
+node_modules/
+
+# Bancos de dados locais do SQLite
+*.db
+
+# Variáveis de ambiente e logs (boa prática)
+.env
+*.log
