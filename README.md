@@ -1,7 +1,7 @@
 # Trabalho-microservicos
 # Smart Lockers Backend - Arquitetura de Microsserviços
 
-Este projeto consiste no backend de um sistema de armários inteligentes (Smart Lockers) para entrega de encomendas em condomínios. Desenvolvido como atividade acadêmica para a disciplina de Integração de Sistemas (UFSC), o sistema adota uma **Arquitetura de Microsserviços** utilizando Node.js, com comunicação síncrona via REST e comunicação assíncrona orientada a eventos via mensageria.
+Este projeto consiste no backend de um sistema de armários inteligentes (Smart Lockers) para entrega de encomendas em condomínios. Desenvolvido como atividade acadêmica para a disciplina de Desenvolvimento de sistemas moveis e embarcados(UFSC), o sistema adota uma **Arquitetura de Microsserviços** utilizando Node.js, com comunicação síncrona via REST e comunicação assíncrona orientada a eventos via mensageria.
 
 ## Arquitetura do Sistema
 
@@ -29,7 +29,7 @@ O ecossistema é composto por um **API Gateway** e 5 microsserviços independent
 
 ---
 
-## omo Executar o Projeto
+## como Executar o Projeto
 
 ### Pré-requisitos
 * Node.js (v18+)
@@ -93,4 +93,4 @@ Todas as requisições devem ser enviadas para o **API Gateway** (`http://localh
 
 ---
 **Autor:** Arthur Rosa dos Santos
-**Instituição:** UFSC (Universidade Federal de Santa Catarina) - Ciência da Computação
+**Instituição:** UFSC (Universidade Federal de Santa Catarina) - Sistemas de Informação
