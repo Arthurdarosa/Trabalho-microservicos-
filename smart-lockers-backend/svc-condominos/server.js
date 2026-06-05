@@ -36,7 +36,7 @@ db.serialize(() => {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
             cpf TEXT UNIQUE NOT NULL,
-            bloco TEXT NOT NULL,
+            condominio TEXT NOT NULL,
             apartamento TEXT NOT NULL,
             email TEXT NOT NULL
         )
@@ -47,13 +47,13 @@ db.serialize(() => {
 
 // C - Cadastrar um novo condômino
 app.post('/', async (req, res) => {
-    const { nome, cpf, bloco, apartamento, email } = req.body;
-    if (!nome || !cpf || !bloco || !apartamento || !email) {
+    const { nome, cpf, condominio, apartamento, email } = req.body;
+    if (!nome || !cpf || !condominio || !apartamento || !email) {
         return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
     }
     try {
-        const sql = `INSERT INTO condominos (nome, cpf, bloco, apartamento, email) VALUES (?, ?, ?, ?, ?)`;
-        const result = await dbRun(sql, [nome, cpf, bloco, apartamento, email]);
+        const sql = `INSERT INTO condominos (nome, cpf, condominio, apartamento, email) VALUES (?, ?, ?, ?, ?)`;
+        const result = await dbRun(sql, [nome, cpf, condominio, apartamento, email]);
         res.status(201).json({ id: result.lastID, message: 'Condômino cadastrado com sucesso!' });
     } catch (err) {
         if (err.message.includes('UNIQUE')) {
@@ -86,10 +86,10 @@ app.get('/:id', async (req, res) => {
 
 // U - Atualizar dados do condômino
 app.put('/:id', async (req, res) => {
-    const { nome, bloco, apartamento, email } = req.body;
+    const { nome, condominio, apartamento, email } = req.body;
     try {
-        const sql = `UPDATE condominos SET nome = COALESCE(?, nome), bloco = COALESCE(?, bloco), apartamento = COALESCE(?, apartamento), email = COALESCE(?, email) WHERE id = ?`;
-        const result = await dbRun(sql, [nome, bloco, apartamento, email, req.params.id]);
+        const sql = `UPDATE condominos SET nome = COALESCE(?, nome), condominio = COALESCE(?, condominio), apartamento = COALESCE(?, apartamento), email = COALESCE(?, email) WHERE id = ?`;
+        const result = await dbRun(sql, [nome, condominio, apartamento, email, req.params.id]);
         if (result.changes === 0) return res.status(404).json({ error: 'Condômino não encontrado.' });
         res.json({ message: 'Dados do condômino atualizados!' });
     } catch (err) {

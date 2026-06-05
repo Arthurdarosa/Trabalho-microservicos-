@@ -29,7 +29,7 @@ O ecossistema é composto por um **API Gateway** e 5 microsserviços independent
 
 ---
 
-## como Executar o Projeto
+## Como Executar o Projeto
 
 ### Pré-requisitos
 * Node.js (v18+)

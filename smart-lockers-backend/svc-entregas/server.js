@@ -45,43 +45,66 @@ async function connectRabbit() {
 }
 connectRabbit();
 
-// --- ROTAS ---
-
 // 1. REGISTRAR ENTREGA (Entregador usa na tela do locker)
 app.post('/', async (req, res) => {
-    const { compartimento_id, condomino_id, descricao_encomenda } = req.body;
+    const { condominio, condomino_id, tamanho_encomenda, descricao_encomenda } = req.body;
+
+    if (!condominio || !condomino_id || !tamanho_encomenda) {
+        return res.status(400).json({ error: 'condominio, condomino_id e tamanho_encomenda são obrigatórios.' });
+    }
 
     try {
-        // Validação Síncrona 1: O compartimento existe e está disponível?
-        const resLocker = await axios.get(`http://localhost:3001/${compartimento_id}`).catch(() => null);
-        if (!resLocker || resLocker.data.status !== 'disponivel') {
-            return res.status(400).json({ error: 'Compartimento inválido ou já ocupado.' });
-        }
-
-        // Validação Síncrona 2: O condômino existe?
+        // Validação 1: O condômino existe?
         const resCondomino = await axios.get(`http://localhost:3002/${condomino_id}`).catch(() => null);
-        if (!resCondomino) {
-            return res.status(400).json({ error: 'Condômino não encontrado no sistema.' });
+        if (!resCondomino) return res.status(400).json({ error: 'Condômino não encontrado no sistema.' });
+
+        // Validação 2: Buscar lockers
+        const resLockers = await axios.get(`http://localhost:3001/`).catch(() => null);
+        if (!resLockers || !resLockers.data) return res.status(500).json({ error: 'Erro ao se comunicar com o serviço de Lockers.' });
+
+        // A MUDANÇA ESTÁ AQUI: Filtra apenas as gavetas que SÃO DESSE MORADOR e estão vazias
+        const compartimentosDoMorador = resLockers.data.filter(
+            c => c.condominio === condominio && c.condomino_id === condomino_id && c.status === 'disponivel'
+        );
+
+        if (compartimentosDoMorador.length === 0) {
+            return res.status(400).json({ error: 'Este morador não possui gavetas disponíveis no momento.' });
         }
 
-        // Fluxo de persistência interna
+        // Mantemos a hierarquia: se a caixa for P e a gaveta do cara for G, ela entra.
+        const hierarquia = { 'P': ['P', 'M', 'G', 'XG'], 'M': ['M', 'G', 'XG'], 'G': ['G', 'XG'], 'XG': ['XG'] };
+        const tamanhosPermitidos = hierarquia[tamanho_encomenda];
+        if (!tamanhosPermitidos) return res.status(400).json({ error: 'Tamanho inválido. Use P, M, G ou XG.' });
+
+        let compartimentoSelecionado = null;
+        for (const tam of tamanhosPermitidos) {
+            compartimentoSelecionado = compartimentosDoMorador.find(c => c.tamanho === tam);
+            if (compartimentoSelecionado) break;
+        }
+
+        if (!compartimentoSelecionado) {
+            return res.status(400).json({ error: `A gaveta do morador é menor que a encomenda de tamanho ${tamanho_encomenda}.` });
+        }
+
+        const compartimento_id = compartimentoSelecionado.id;
+
+        // Persistência e Mensageria
         const sql = `INSERT INTO entregas (compartimento_id, condomino_id, descricao_encomenda) VALUES (?, ?, ?)`;
         const result = await dbRun(sql, [compartimento_id, condomino_id, descricao_encomenda]);
         const entregaId = result.lastID;
 
-        // Atualiza o status do compartimento para ocupado lá no svc-lockers (Via HTTP)
         await axios.put(`http://localhost:3001/${compartimento_id}`, { status: 'ocupado' });
 
-        // --- ENVIANDO PARA AS FILAS (MENSAGERIA) ---
         if (rabbitChannel) {
-            const payloadLog = { evento: 'ENTREGA_DEPOSITADA', entrega_id: entregaId, data: new Date() };
-            const payloadAbertura = { comando: 'ABRIR_PORTA', compartimento_id: compartimento_id, motivo: 'Deposito' };
-
-            rabbitChannel.sendToQueue(QUEUE_LOGS, Buffer.from(JSON.stringify(payloadLog)));
-            rabbitChannel.sendToQueue(QUEUE_ABERTURA, Buffer.from(JSON.stringify(payloadAbertura)));
+            rabbitChannel.sendToQueue(QUEUE_LOGS, Buffer.from(JSON.stringify({ evento: 'ENTREGA_DEPOSITADA', entrega_id: entregaId, data: new Date() })));
+            rabbitChannel.sendToQueue(QUEUE_ABERTURA, Buffer.from(JSON.stringify({ comando: 'ABRIR_PORTA', compartimento_id: compartimento_id, motivo: 'Deposito' })));
         }
 
-        res.status(201).json({ id: entregaId, message: 'Encomenda guardada e notificações disparadas!' });
+        res.status(201).json({ 
+            id: entregaId, 
+            message: 'Encomenda guardada na gaveta exclusiva do morador!',
+            detalhes: { gaveta_alocada: compartimentoSelecionado.numero_gaveta }
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -119,7 +142,23 @@ app.post('/retirar/:id', async (req, res) => {
     }
 });
 
-// Listar todas as entregas (Para visualização do admin)
+// 3. VERIFICAR ENCOMENDAS (Condômino pelo App)
+app.get('/condomino/:id', async (req, res) => {
+    try {
+        // Retorna apenas as encomendas daquele morador que ainda estão no armário
+        const sql = `SELECT * FROM entregas WHERE condomino_id = ? AND status = 'armazenado'`;
+        const rows = await dbAll(sql, [req.params.id]);
+        
+        if (rows.length === 0) {
+            return res.json({ message: 'Você não tem novas encomendas no momento.' });
+        }
+        
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/', async (req, res) => {
     const rows = await dbAll('SELECT * FROM entregas');
     res.json(rows);

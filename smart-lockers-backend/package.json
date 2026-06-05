@@ -1,0 +1,21 @@
+{
+  "name": "smart-lockers-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "concurrently --kill-others-on-fail \"npm run gateway\" \"npm run lockers\" \"npm run condominos\" \"npm run entregas\" \"npm run logging\" \"npm run abertura\"",
+    "gateway": "node api-gateway/server.js",
+    "lockers": "node svc-lockers/server.js",
+    "condominos": "node svc-condominos/server.js",
+    "entregas": "node svc-entregas/server.js",
+    "logging": "node svc-logging/server.js",
+    "abertura": "node svc-controle-abertura/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "concurrently": "^10.0.0"
+  }
+}
